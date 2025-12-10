@@ -84,7 +84,7 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
       navigator.clipboard.writeText(generatedResult.files[activeFileIndex].content);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied to clipboard" });
+      toast({ title: "Copied to clipboard", duration: 2000 });
     }
   };
 
@@ -149,7 +149,7 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
       </header>
 
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 bg-zinc-950 border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden">
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 bg-zinc-950 border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden [&>button]:hidden">
           <DialogHeader className="px-6 py-4 border-b border-white/10 flex flex-row items-center justify-between">
             <div className="space-y-1">
                <DialogTitle className="text-primary flex items-center gap-2">
@@ -159,15 +159,17 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
                   {generatedResult?.notes || "Code generation complete."}
                </DialogDescription>
             </div>
-            {/* Explicit Close Button for better UX */}
-            <Button variant="ghost" size="icon" onClick={() => setShowResultDialog(false)} className="text-zinc-400 hover:text-white">
-               <X size={20} />
-            </Button>
+            {/* Explicit Close Button using DialogClose for robust behavior */}
+            <DialogClose asChild>
+               <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+                  <X size={20} />
+               </Button>
+            </DialogClose>
           </DialogHeader>
           
           <div className="flex-1 flex overflow-hidden">
              {/* File Explorer Sidebar */}
-             <div className="w-64 bg-black/50 border-r border-white/10 p-4 overflow-y-auto">
+             <div className="w-64 bg-zinc-900 border-r border-white/10 p-4 overflow-y-auto">
                 <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Generated Files</h3>
                 <div className="space-y-2">
                    {generatedResult?.files.map((file, idx) => (
