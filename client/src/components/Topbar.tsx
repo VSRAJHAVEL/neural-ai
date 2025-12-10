@@ -8,26 +8,35 @@ import {
   Play, 
   Code,
   Loader2,
-  Cpu
+  Cpu,
+  Copy,
+  Check,
+  X,
+  FileCode
 } from 'lucide-react';
-import { mockGenerateCode, mockOptimizeCode } from '../services/mockAi';
+import { mockGenerateCode, mockOptimizeCode, GenerationResult } from '../services/mockAi';
 import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 export function Topbar({ onPreview }: { onPreview: () => void }) {
   const { saveProject, layout } = useProject();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<{jsx: string, readme: string, notes?: string} | null>(null);
+  const [generatedResult, setGeneratedResult] = useState<GenerationResult | null>(null);
   const [showResultDialog, setShowResultDialog] = useState(false);
+  const [activeFileIndex, setActiveFileIndex] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       const result = await mockGenerateCode(layout);
       setGeneratedResult(result);
+      setActiveFileIndex(0);
       setShowResultDialog(true);
       toast({
         title: "Code Generated",
@@ -47,8 +56,13 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
   const handleOptimize = async () => {
     setIsOptimizing(true);
     try {
-      const result = await mockOptimizeCode("<div>Placeholder for current layout JSX</div>");
-      setGeneratedResult({ jsx: result.optimizedJsx, readme: "Optimized Output", notes: result.notes });
+       // Mock optimization for now just returning a single file structure
+      const result = await mockOptimizeCode("<div>Placeholder</div>");
+      setGeneratedResult({
+         files: [{ name: 'Optimized.jsx', content: result.optimizedJsx, language: 'jsx' }],
+         readme: "Optimized Output",
+         notes: result.notes 
+      });
       setShowResultDialog(true);
       toast({
         title: "Optimization Complete",
@@ -62,6 +76,15 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
        });
     } finally {
       setIsOptimizing(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    if (generatedResult && generatedResult.files[activeFileIndex]) {
+      navigator.clipboard.writeText(generatedResult.files[activeFileIndex].content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "Copied to clipboard" });
     }
   };
 
@@ -126,49 +149,82 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
       </header>
 
       <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto bg-zinc-950 border-primary/20 shadow-2xl shadow-primary/10">
-          <DialogHeader>
-            <DialogTitle className="text-primary flex items-center gap-2">
-              <Cpu size={20} /> AI Output
-            </DialogTitle>
-            <DialogDescription className="text-zinc-400">
-              Generated code from Neural UI Engine.
-            </DialogDescription>
+        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 bg-zinc-950 border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b border-white/10 flex flex-row items-center justify-between">
+            <div className="space-y-1">
+               <DialogTitle className="text-primary flex items-center gap-2">
+                  <Cpu size={20} /> AI Generation Result
+               </DialogTitle>
+               <DialogDescription className="text-zinc-400">
+                  {generatedResult?.notes || "Code generation complete."}
+               </DialogDescription>
+            </div>
+            <DialogClose asChild>
+               <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
+                  <X size={20} />
+               </Button>
+            </DialogClose>
           </DialogHeader>
           
-          {generatedResult && (
-            <div className="space-y-4 mt-4">
-              {generatedResult.notes && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-primary/10 border border-primary/20 p-4 rounded-lg"
-                >
-                  <h3 className="font-bold text-primary mb-2 flex items-center gap-2">
-                    <Sparkles size={16} /> Optimization Notes
-                  </h3>
-                  <pre className="whitespace-pre-wrap text-sm text-zinc-300 font-mono">{generatedResult.notes}</pre>
-                </motion.div>
-              )}
-              
-              <div className="space-y-2">
-                <Label className="text-zinc-300">React JSX</Label>
-                <div className="relative group">
-                   <div className="absolute inset-0 bg-primary/20 blur opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" />
-                   <pre className="relative p-4 rounded-lg bg-black border border-white/10 overflow-x-auto text-xs font-mono text-green-400 shadow-inner">
-                     {generatedResult.jsx}
-                   </pre>
+          <div className="flex-1 flex overflow-hidden">
+             {/* File Explorer Sidebar */}
+             <div className="w-64 bg-black/50 border-r border-white/10 p-4 overflow-y-auto">
+                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Generated Files</h3>
+                <div className="space-y-2">
+                   {generatedResult?.files.map((file, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setActiveFileIndex(idx)}
+                        className={`w-full text-left px-3 py-2 rounded text-sm flex items-center gap-2 transition-colors ${
+                           activeFileIndex === idx ? 'bg-primary/20 text-primary' : 'text-zinc-400 hover:bg-white/5 hover:text-white'
+                        }`}
+                      >
+                         <FileCode size={14} />
+                         {file.name}
+                      </button>
+                   ))}
                 </div>
-              </div>
+             </div>
 
-              <div className="space-y-2">
-                <Label className="text-zinc-300">README.md</Label>
-                 <pre className="p-4 rounded-lg bg-black border border-white/10 overflow-x-auto text-xs font-mono text-blue-300 shadow-inner">
-                   {generatedResult.readme}
-                 </pre>
-              </div>
-            </div>
-          )}
+             {/* Code Editor Area */}
+             <div className="flex-1 flex flex-col bg-[#1e1e1e] relative">
+                <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#252526]">
+                   <span className="text-xs text-zinc-400 font-mono">
+                      {generatedResult?.files[activeFileIndex]?.name}
+                   </span>
+                   <Button 
+                     variant="ghost" 
+                     size="sm" 
+                     onClick={copyToClipboard}
+                     className="h-7 text-xs text-zinc-300 hover:text-white hover:bg-white/10"
+                   >
+                      {copied ? <Check size={12} className="mr-1.5 text-green-400" /> : <Copy size={12} className="mr-1.5" />}
+                      {copied ? 'Copied' : 'Copy Code'}
+                   </Button>
+                </div>
+                <div className="flex-1 overflow-auto custom-scrollbar">
+                   {generatedResult && (
+                      <SyntaxHighlighter
+                         language={generatedResult.files[activeFileIndex].language === 'jsx' ? 'javascript' : 'css'}
+                         style={vscDarkPlus}
+                         customStyle={{ margin: 0, padding: '1.5rem', background: 'transparent', fontSize: '13px' }}
+                         showLineNumbers={true}
+                      >
+                         {generatedResult.files[activeFileIndex].content}
+                      </SyntaxHighlighter>
+                   )}
+                </div>
+             </div>
+          </div>
+          
+          <div className="p-4 border-t border-white/10 bg-black flex justify-end gap-2">
+             <Button variant="outline" onClick={() => setShowResultDialog(false)} className="border-white/10 text-zinc-300 hover:bg-white/5">
+                Close
+             </Button>
+             <Button onClick={copyToClipboard} className="bg-primary text-black hover:bg-primary/90">
+                <Copy size={14} className="mr-2" /> Copy All Files
+             </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>

@@ -1,16 +1,29 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Settings2, Layers } from 'lucide-react';
+import { Settings2, Layers, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function PropertiesPanel() {
   const { layout, selectedComponentId, updateComponentProps } = useProject();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedComponent = layout.components.find((c) => c.id === selectedComponentId);
+  // Helper to find selected component in tree
+  const findComponent = (components: any[], id: string): any => {
+    for (const comp of components) {
+      if (comp.id === id) return comp;
+      if (comp.children) {
+        const found = findComponent(comp.children, id);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  const selectedComponent = selectedComponentId ? findComponent(layout.components, selectedComponentId) : null;
 
   if (!selectedComponent) {
     return (
@@ -25,6 +38,19 @@ export function PropertiesPanel() {
 
   const handleChange = (key: string, value: any) => {
     updateComponentProps(selectedComponent.id, { [key]: value });
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          handleChange('src', event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -44,7 +70,20 @@ export function PropertiesPanel() {
           exit={{ opacity: 0, x: -20 }}
           className="p-6 space-y-6"
         >
-          {/* Common Props */}
+          {/* Label Edit */}
+          <div className="space-y-2">
+            <Label className="text-white/80">Component Label (Internal)</Label>
+            <Input 
+              value={selectedComponent.props.label || ''} 
+              onChange={(e) => handleChange('label', e.target.value)}
+              className="bg-white/5 border-white/10 text-white focus:border-primary/50"
+              placeholder="e.g. Hero Section"
+            />
+          </div>
+
+          <Separator className="bg-white/10" />
+
+          {/* Text Content */}
           {(selectedComponent.type === 'text' || selectedComponent.type === 'button') && (
             <div className="space-y-2">
               <Label className="text-white/80">Text Content</Label>
@@ -56,14 +95,37 @@ export function PropertiesPanel() {
             </div>
           )}
 
+          {/* Image Upload */}
           {selectedComponent.type === 'image' && (
-            <div className="space-y-2">
-              <Label className="text-white/80">Image URL</Label>
-              <Input 
-                value={selectedComponent.props.src || ''} 
-                onChange={(e) => handleChange('src', e.target.value)}
-                className="bg-white/5 border-white/10 text-white focus:border-primary/50"
-              />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white/80">Image Source</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={selectedComponent.props.src || ''} 
+                    onChange={(e) => handleChange('src', e.target.value)}
+                    className="bg-white/5 border-white/10 text-white focus:border-primary/50"
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-white/80">Or Upload Local Image</Label>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                />
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 p-3 rounded-md border border-dashed border-white/20 hover:border-primary/50 hover:bg-white/5 transition-all text-sm text-white/60"
+                >
+                  <Upload size={16} /> Choose from Device
+                </button>
+              </div>
             </div>
           )}
 
