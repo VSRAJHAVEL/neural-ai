@@ -14,7 +14,8 @@ import {
   X,
   FileCode
 } from 'lucide-react';
-import { mockGenerateCode, mockOptimizeCode, GenerationResult } from '../services/mockAi';
+import { GenerationResult } from '../services/api';
+import { generateCode, optimizeCode } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { motion } from 'framer-motion';
@@ -34,18 +35,19 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
-      const result = await mockGenerateCode(layout);
+      const result = await generateCode(layout);
       setGeneratedResult(result);
       setActiveFileIndex(0);
       setShowResultDialog(true);
       toast({
         title: "Code Generated",
-        description: "Your layout has been converted to React code.",
+        description: "Your layout has been converted to React code using AI.",
       });
     } catch (error) {
+      console.error('Generation error:', error);
       toast({
         title: "Error",
-        description: "Failed to generate code.",
+        description: error instanceof Error ? error.message : "Failed to generate code.",
         variant: "destructive"
       });
     } finally {
@@ -56,24 +58,37 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
   const handleOptimize = async () => {
     setIsOptimizing(true);
     try {
-       // Mock optimization for now just returning a single file structure
-      const result = await mockOptimizeCode("<div>Placeholder</div>");
+      if (!generatedResult || !generatedResult.files[0]) {
+        toast({
+          title: "No Code to Optimize",
+          description: "Please generate code first before optimizing.",
+          variant: "destructive"
+        });
+        setIsOptimizing(false);
+        return;
+      }
+
+      const currentCode = generatedResult.files[0].content;
+      const result = await optimizeCode(currentCode);
+      
       setGeneratedResult({
-         files: [{ name: 'Optimized.jsx', content: result.optimizedJsx, language: 'jsx' }],
-         readme: "Optimized Output",
-         notes: result.notes 
+        files: [{ name: 'Optimized.jsx', content: result.optimizedCode, language: 'jsx' }],
+        readme: "AI-Optimized Code",
+        notes: result.notes 
       });
+      setActiveFileIndex(0);
       setShowResultDialog(true);
       toast({
         title: "Optimization Complete",
         description: "AI has improved your code structure.",
       });
     } catch (error) {
+      console.error('Optimization error:', error);
       toast({
-         title: "Error",
-         description: "Failed to optimize code.",
-         variant: "destructive"
-       });
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to optimize code.",
+        variant: "destructive"
+      });
     } finally {
       setIsOptimizing(false);
     }

@@ -1,16 +1,20 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Layout, Component, ComponentType } from '../lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { createProject, updateProject } from '../services/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface ProjectContextType {
   layout: Layout;
   selectedComponentId: string | null;
+  currentProjectId: number | null;
   addComponent: (type: ComponentType) => void;
   selectComponent: (id: string | null) => void;
   updateComponentProps: (id: string, props: any) => void;
   removeComponent: (id: string) => void;
-  saveProject: () => void;
+  saveProject: () => Promise<void>;
   setLayout: (layout: Layout) => void;
+  setCurrentProjectId: (id: number | null) => void;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -70,6 +74,8 @@ const addChildToParent = (components: Component[], parentId: string, newComponen
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [layout, setLayout] = useState<Layout>(INITIAL_LAYOUT);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
+  const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
+  const { toast } = useToast();
 
   const addComponent = (type: ComponentType) => {
     const newComponent: Component = {
@@ -130,9 +136,32 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const saveProject = () => {
-    console.log('Project Saved:', JSON.stringify(layout, null, 2));
-    alert('Project saved locally! (Check console for JSON)');
+  const saveProject = async () => {
+    try {
+      const projectName = `Neural UI Project - ${new Date().toLocaleDateString()}`;
+      
+      if (currentProjectId) {
+        await updateProject(currentProjectId, projectName, layout);
+        toast({
+          title: "Project Updated",
+          description: "Your project has been saved successfully.",
+        });
+      } else {
+        const newProject = await createProject(projectName, layout);
+        setCurrentProjectId(newProject.id);
+        toast({
+          title: "Project Saved",
+          description: "Your project has been created successfully.",
+        });
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: "Save Failed",
+        description: error instanceof Error ? error.message : "Failed to save project",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -140,12 +169,14 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
       value={{
         layout,
         selectedComponentId,
+        currentProjectId,
         addComponent,
         selectComponent,
         updateComponentProps,
         removeComponent,
         saveProject,
         setLayout,
+        setCurrentProjectId,
       }}
     >
       {children}
