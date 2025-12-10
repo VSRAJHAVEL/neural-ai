@@ -6,9 +6,10 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 channel = "stable-24_05"
 
 [deployment]
-deploymentTarget = "static"
+deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
 publicDir = "dist/public"
+run = ["npm", "run", "start"]
 
 [[ports]]
 localPort = 5000
@@ -35,8 +36,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev:client"
+args = "npm run dev"
 waitForPort = 5000
 
 [agent]
-mockupState = "MOCKUP"
+mockupState = "FULLSTACK"
+integrations = ["javascript_database:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+GROQ_API_KEY = "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"
+HUGGINGFACE_API_KEY = "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"
