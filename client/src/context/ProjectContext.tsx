@@ -21,11 +21,14 @@ const INITIAL_LAYOUT: Layout = {
 
 const DEFAULT_PROPS: Record<ComponentType, any> = {
   container: { padding: 'p-4', backgroundColor: 'bg-transparent', borderRadius: 'rounded-none', label: 'Container' },
+  section: { padding: 'p-8', backgroundColor: 'bg-transparent', borderRadius: 'rounded-none', label: 'Section' },
+  footer: { padding: 'p-8', backgroundColor: 'bg-zinc-900', borderRadius: 'rounded-none', label: 'Footer' },
+  navbar: { backgroundColor: 'bg-background', padding: 'p-4', label: 'Navbar' },
+  card: { padding: 'p-6', backgroundColor: 'bg-card', borderRadius: 'rounded-xl', shadow: 'shadow-md', label: 'Card' },
   text: { text: 'New Text', color: 'text-foreground', fontSize: 'text-base', label: 'Text Block' },
+  link: { text: 'Link', color: 'text-primary', fontSize: 'text-sm', href: '#', label: 'Link' },
   button: { text: 'Click Me', backgroundColor: 'bg-primary', color: 'text-primary-foreground', borderRadius: 'rounded-md', label: 'Button' },
   image: { src: 'https://placehold.co/600x400', alt: 'Placeholder', borderRadius: 'rounded-md', label: 'Image' },
-  card: { padding: 'p-6', backgroundColor: 'bg-card', borderRadius: 'rounded-xl', shadow: 'shadow-md', label: 'Card' },
-  navbar: { backgroundColor: 'bg-background', padding: 'p-4', label: 'Navbar' },
 };
 
 // Helper to find and update a component in the tree
@@ -77,28 +80,12 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     };
 
     if (selectedComponentId) {
-      // Check if selected component is a container (or card) that can accept children
-      // We need to find the component first to check its type, but for simplicity, 
-      // let's try to add it. If the selected component shouldn't have children, 
-      // we might need a stricter check. For now, 'container' and 'card' are good candidates.
-      // But to keep it simple: if selected, try to add as child.
-      
-      // We need to know if the target is a container.
-      // Let's assume ONLY 'container' and 'card' can have children for now.
-      // But since we don't have the component object handy here without searching...
-      // Let's just add to root if not a container, or maybe the user wants to add as a sibling?
-      // Standard UX: If container selected -> Add inside. Else -> Add to root.
-      
-      // Let's implement: Always add to root unless we find the selected ID and it is a container.
-      // Actually, let's just add to root for now to ensure it works, then improve.
-      // WAIT, user specifically asked "drag components inside another".
-      // So I will implement "Add to Selected Parent" logic.
-      
       let addedToParent = false;
       const tryAddToParent = (comps: Component[]): boolean => {
          for (const comp of comps) {
             if (comp.id === selectedComponentId) {
-               if (comp.type === 'container' || comp.type === 'card') {
+               // Allow adding children to these types
+               if (['container', 'card', 'section', 'footer', 'navbar'].includes(comp.type)) {
                   return true;
                }
             }

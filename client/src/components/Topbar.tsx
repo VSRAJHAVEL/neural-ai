@@ -159,11 +159,10 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
                   {generatedResult?.notes || "Code generation complete."}
                </DialogDescription>
             </div>
-            <DialogClose asChild>
-               <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
-                  <X size={20} />
-               </Button>
-            </DialogClose>
+            {/* Explicit Close Button for better UX */}
+            <Button variant="ghost" size="icon" onClick={() => setShowResultDialog(false)} className="text-zinc-400 hover:text-white">
+               <X size={20} />
+            </Button>
           </DialogHeader>
           
           <div className="flex-1 flex overflow-hidden">

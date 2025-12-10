@@ -1,4 +1,4 @@
-export type ComponentType = 'container' | 'text' | 'button' | 'image' | 'card' | 'navbar';
+export type ComponentType = 'container' | 'text' | 'button' | 'image' | 'card' | 'navbar' | 'link' | 'footer' | 'section';
 
 export interface ComponentProps {
   [key: string]: any;
@@ -9,6 +9,7 @@ export interface ComponentProps {
   href?: string;
   padding?: string;
   borderRadius?: string;
+  label?: string;
 }
 
 export interface Component {

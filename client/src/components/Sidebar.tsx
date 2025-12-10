@@ -1,16 +1,19 @@
 import React from 'react';
 import { useProject } from '../context/ProjectContext';
 import { ComponentType } from '../lib/types';
-import { Box, Type, Image, MousePointerClick, LayoutTemplate, Square, GripVertical } from 'lucide-react';
+import { Box, Type, Image, MousePointerClick, LayoutTemplate, Square, GripVertical, Link as LinkIcon, Component, Columns } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const COMPONENTS: { type: ComponentType; icon: React.ReactNode; label: string }[] = [
+  { type: 'section', icon: <Component size={20} />, label: 'Section' },
   { type: 'container', icon: <Box size={20} />, label: 'Container' },
+  { type: 'navbar', icon: <Square size={20} />, label: 'Navbar' },
+  { type: 'link', icon: <LinkIcon size={20} />, label: 'Link' },
   { type: 'text', icon: <Type size={20} />, label: 'Text Block' },
   { type: 'button', icon: <MousePointerClick size={20} />, label: 'Button' },
   { type: 'image', icon: <Image size={20} />, label: 'Image' },
   { type: 'card', icon: <LayoutTemplate size={20} />, label: 'Card' },
-  { type: 'navbar', icon: <Square size={20} />, label: 'Navbar' },
+  { type: 'footer', icon: <Columns size={20} />, label: 'Footer' },
 ];
 
 export function Sidebar() {

@@ -17,7 +17,7 @@ const ComponentRenderer = ({ component, isSelected, onSelect, onDelete }: { comp
 
   const { setNodeRef: setDropNodeRef } = useDroppable({
     id: component.id,
-    data: { accept: ['container', 'card'].includes(component.type) }
+    data: { accept: ['container', 'card', 'section', 'footer', 'navbar'].includes(component.type) }
   });
 
   const style = transform ? {
@@ -25,17 +25,21 @@ const ComponentRenderer = ({ component, isSelected, onSelect, onDelete }: { comp
     zIndex: 999,
   } : undefined;
 
+  // FIX: Apply borderRadius to the wrapper so selection highlight curves with the element
   const baseClasses = cn(
     "relative group cursor-pointer border-2 transition-all duration-200",
-    isSelected ? "border-primary ring-2 ring-primary/20 z-10" : "border-transparent hover:border-primary/50"
+    isSelected ? "border-primary ring-2 ring-primary/20 z-10" : "border-transparent hover:border-primary/50",
+    props.borderRadius // Apply radius to selection wrapper
   );
 
   const renderContent = () => {
     switch (type) {
+      case 'section':
       case 'container':
+      case 'footer':
         return (
           <div className={cn("min-h-[100px] border border-dashed border-gray-700 w-full relative", props.padding, props.backgroundColor, props.borderRadius)}>
-             <div className="absolute top-0 left-0 bg-white/10 text-[10px] px-1 text-white/50 pointer-events-none uppercase tracking-wider">{props.label || 'Container'}</div>
+             <div className="absolute top-0 left-0 bg-white/10 text-[10px] px-1 text-white/50 pointer-events-none uppercase tracking-wider">{props.label || type}</div>
              <div className="flex flex-col gap-2 pt-4">
                 {children && children.map(child => (
                    <ConnectedComponentRenderer key={child.id} component={child} />
@@ -46,8 +50,10 @@ const ComponentRenderer = ({ component, isSelected, onSelect, onDelete }: { comp
         );
       case 'text':
         return <p className={cn(props.fontSize, props.color)}>{props.text}</p>;
+      case 'link':
+        return <a href={props.href || '#'} className={cn(props.fontSize, props.color, "hover:underline")}>{props.text}</a>;
       case 'button':
-        return <button className={cn("px-4 py-2 font-medium transition-colors", props.backgroundColor, props.color, props.borderRadius)}>{props.text}</button>;
+        return <button className={cn("px-4 py-2 font-medium transition-colors w-full", props.backgroundColor, props.color, props.borderRadius)}>{props.text}</button>;
       case 'image':
         return <img src={props.src} alt="Component" className={cn("max-w-full h-auto object-cover", props.borderRadius)} />;
       case 'card':
@@ -58,17 +64,19 @@ const ComponentRenderer = ({ component, isSelected, onSelect, onDelete }: { comp
                 {children && children.map(child => (
                    <ConnectedComponentRenderer key={child.id} component={child} />
                 ))}
+                {(!children || children.length === 0) && <div className="text-center text-white/20 text-sm py-4">Empty Card</div>}
              </div>
           </div>
         );
       case 'navbar':
         return (
           <nav className={cn("w-full flex justify-between items-center border-b border-white/10", props.padding, props.backgroundColor)}>
-            <span className="font-bold text-lg">Logo</span>
-            <div className="flex gap-4">
+            <span className="font-bold text-lg text-primary">Logo</span>
+            <div className="flex gap-4 items-center">
                {children && children.map(child => (
                    <ConnectedComponentRenderer key={child.id} component={child} />
                 ))}
+               {(!children || children.length === 0) && <span className="text-xs text-muted-foreground border border-dashed border-gray-700 px-2 py-1 rounded">Add links here</span>}
             </div>
           </nav>
         );
@@ -80,7 +88,7 @@ const ComponentRenderer = ({ component, isSelected, onSelect, onDelete }: { comp
   // Combine refs
   const setRefs = (node: HTMLElement | null) => {
       setDragNodeRef(node);
-      if (['container', 'card'].includes(component.type)) {
+      if (['container', 'card', 'section', 'footer', 'navbar'].includes(component.type)) {
          setDropNodeRef(node);
       }
   };
@@ -133,7 +141,6 @@ export function Canvas() {
        console.log(`Dropped ${active.id} over ${over.id}`);
        // TODO: Implement actual tree moving logic here.
        // For now, this just proves the drag interaction works.
-       // Implementing full tree reordering is complex and might break the 'mockup' speed.
        // We rely on "Select Parent -> Add" for nesting for now.
     }
   };
