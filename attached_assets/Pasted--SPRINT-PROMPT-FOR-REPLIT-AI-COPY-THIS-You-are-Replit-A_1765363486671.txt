@@ -1,0 +1,261 @@
+🔥 SPRINT PROMPT FOR REPLIT AI (COPY THIS)
+
+You are Replit AI inside a fresh Repl.
+Build a complete full-stack app called “Neural UI – AI-Powered Website Builder & Optimizer” in this ONE Repl.
+
+GOAL (what the app must do)
+
+Users log in (email/password, Firebase Auth).
+
+They see a UI Builder:
+
+Left: Sidebar with components (container, text, button, image, card, navbar)
+
+Center: Canvas (add/arrange components, list view is enough)
+
+Right: Properties panel (edit text, color, URL, etc. of selected component)
+
+Layout is stored as layout JSON.
+
+Users can:
+
+Save projects to Firestore
+
+Load their projects
+
+There are two main AI features:
+
+Generate Code (AI) → layout JSON → React + Tailwind JSX + small README
+
+Optimize Code (AI) → improves JSX for accessibility/responsiveness
+
+AI must use a FREE API:
+
+Groq API with model "llama3-8b-8192"
+
+Endpoint: https://api.groq.com/openai/v1/chat/completions
+
+Backend exposes:
+
+POST /api/generate
+
+POST /api/optimize
+
+TECH STACK
+
+Frontend (folder: frontend/):
+
+React + Vite
+
+TailwindCSS
+
+Axios
+
+Firebase Web SDK
+
+Backend (folder: backend/):
+
+Node.js + Express
+
+Axios
+
+cors, dotenv
+
+Firebase Admin SDK
+
+Uses Groq API (env: GROQ_API_KEY)
+
+DB:
+
+Firebase Auth (email/password)
+
+Firestore: users/{uid}/projects/{projectId} with:
+
+name
+
+layout (JSON)
+
+generated (object with jsx, readme)
+
+FOLDER & SCRIPTS
+
+Create this structure:
+
+/
+├── backend/
+│   ├── server.js
+│   ├── routes/
+│   │   ├── generate.js
+│   │   └── optimize.js
+│   ├── prompts/
+│   │   ├── generatePrompt.js
+│   │   └── optimizePrompt.js
+│   ├── utils/
+│   │   └── aiClient.js
+│   ├── package.json
+│   └── .env.example
+├── frontend/
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── postcss.config.js
+│   ├── package.json
+│   └── src/
+│       ├── main.jsx
+│       ├── App.jsx
+│       ├── index.css
+│       ├── pages/
+│       │   ├── LoginPage.jsx
+│       │   └── BuilderPage.jsx
+│       ├── components/
+│       │   ├── Topbar.jsx
+│       │   ├── Sidebar.jsx
+│       │   ├── Canvas.jsx
+│       │   ├── PropertiesPanel.jsx
+│       │   └── Preview.jsx
+│       ├── context/
+│       │   └── ProjectContext.jsx
+│       └── services/
+│           ├── api.js
+│           └── firebase.js
+├── package.json   (root)
+├── .replit
+├── README.md
+└── presentation_notes.md
+
+
+Root package.json (workspace style):
+
+{
+  "name": "neural-ui-root",
+  "private": true,
+  "scripts": {
+    "install-all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev": "cd backend && npm run dev & cd frontend && npm run dev"
+  }
+}
+
+
+.replit should run:
+
+run = "npm install && npm run install-all && npm run dev"
+
+BACKEND BEHAVIOR (ESSENTIAL ONLY)
+
+/backend/prompts/generatePrompt.js:
+
+Function that takes layoutJson and returns a prompt like:
+
+“You are an expert React + Tailwind developer… Convert this layout JSON into JSON: { "jsx": "...", "readme": "..." } …”
+
+/backend/utils/aiClient.js:
+
+callGroq(prompt) that:
+
+Calls Groq API
+
+Returns response.data.choices[0].message.content
+
+/backend/routes/generate.js:
+
+POST /api/generate
+
+Body: { layoutJson }
+
+Builds prompt, calls callGroq, parses JSON, returns { jsx, readme }.
+
+/backend/routes/optimize.js:
+
+POST /api/optimize
+
+Body: { jsx }
+
+Similar flow, returns { optimizedJsx, notes }.
+
+FRONTEND BEHAVIOR (ESSENTIAL ONLY)
+
+LoginPage.jsx: simple email/password login using Firebase Auth; on success navigate to /builder.
+
+BuilderPage.jsx:
+
+Uses ProjectContext to store layout JSON + selected component
+
+Shows Topbar, Sidebar, Canvas, PropertiesPanel, Preview
+
+Sidebar.jsx: list of basic components → onClick “add component to layout”.
+
+Canvas.jsx: show components from layout as boxes, allow selecting one.
+
+PropertiesPanel.jsx: show fields for selected component (like text, color).
+
+Preview.jsx: render clean UI version of layout (no edit).
+
+Topbar.jsx:
+
+“Save Project” → Firestore
+
+“Generate Code (AI)” → call /api/generate
+
+“Optimize Code (AI)” → call /api/optimize
+
+/frontend/src/services/api.js:
+
+generateCode(layoutJson) → POST /api/generate
+
+optimizeCode(jsx) → POST /api/optimize
+
+ENV EXAMPLE
+
+Create .env.example at root:
+
+GROQ_API_KEY=your_groq_key_here
+
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_API_BASE=http://localhost:5000
+
+README & PRESENTATION NOTES (SHORT)
+
+README.md should include:
+
+What Neural UI does
+
+Tech stack
+
+How to run in Replit:
+
+npm install
+
+npm run install-all
+
+Set secrets
+
+npm run dev
+
+Short section: “How this fits hackathon rubrics (Technical, AI, UI/UX, Creativity, Docs)”
+
+presentation_notes.md:
+
+60–90 sec demo script
+
+Small architecture summary
+
+OUTPUT FORMAT
+
+In this Replit reply:
+
+Start with Quickstart commands.
+
+Then create all files above with full code, each in its own code block labeled with the file path (e.g. // FILE: backend/server.js).
+
+No placeholders (...), no missing imports.
+
+Now generate the complete project as described, so I can run it in Replit with:
+
+npm install
+npm run install-all
+npm run dev
