@@ -45,46 +45,48 @@
   --animate-out: fade-out 0.2s ease-in;
 }
 
-/* NEURAL UI THEME - Dark Cybernetic Aesthetic */
+/* LUXURY GOLD & BLACK THEME */
 :root {
-  --background: 240 10% 3.9%; /* Very dark, almost black */
-  --foreground: 0 0% 98%;
+  /* Deep Black Backgrounds */
+  --background: 240 10% 3.9%; /* Rich Black */
+  --foreground: 45 20% 90%; /* Soft Gold-White */
 
-  --card: 240 10% 6%; /* Slightly lighter than bg */
-  --card-foreground: 0 0% 98%;
+  --card: 240 10% 5%; /* Slightly Lighter Black */
+  --card-foreground: 45 30% 90%;
 
-  --popover: 240 10% 6%;
-  --popover-foreground: 0 0% 98%;
+  --popover: 240 10% 5%;
+  --popover-foreground: 45 30% 90%;
 
-  --primary: 263 70% 50%; /* Electric Purple */
-  --primary-foreground: 210 40% 98%;
+  /* GOLD PRIMARY */
+  --primary: 45 90% 50%; /* Pure Gold */
+  --primary-foreground: 240 10% 3.9%; /* Black Text on Gold */
 
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 240 5% 15%; /* Dark Grey */
+  --secondary-foreground: 45 30% 90%;
 
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 5% 64.9%;
+  --muted: 240 5% 15%;
+  --muted-foreground: 240 5% 60%;
 
-  --accent: 263 70% 50%;
-  --accent-foreground: 210 40% 98%;
+  --accent: 45 90% 50%;
+  --accent-foreground: 240 10% 3.9%;
 
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 240 4% 20%; /* Subtle borders */
-  --input: 240 4% 20%;
-  --ring: 263 70% 50%;
+  --border: 45 30% 20%; /* Subtle Gold Borders */
+  --input: 240 5% 15%;
+  --ring: 45 90% 50%;
 
   --radius: 0.5rem;
 
-  --sidebar: 240 10% 6%;
-  --sidebar-foreground: 240 5% 64.9%;
-  --sidebar-primary: 263 70% 50%;
-  --sidebar-primary-foreground: 0 0% 98%;
-  --sidebar-accent: 240 4% 16%;
-  --sidebar-accent-foreground: 240 5% 64.9%;
-  --sidebar-border: 240 4% 20%;
-  --sidebar-ring: 263 70% 50%;
+  --sidebar: 240 10% 4%;
+  --sidebar-foreground: 45 20% 80%;
+  --sidebar-primary: 45 90% 50%;
+  --sidebar-primary-foreground: 240 10% 3.9%;
+  --sidebar-accent: 240 5% 12%;
+  --sidebar-accent-foreground: 45 90% 50%;
+  --sidebar-border: 45 20% 15%;
+  --sidebar-ring: 45 90% 50%;
 }
 
 @layer base {
@@ -96,9 +98,25 @@
   }
 }
 
-/* Custom Grid Background for the Canvas */
+/* Luxury Grid Background */
 .bg-grid-pattern {
-  background-size: 40px 40px;
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-image: 
+    linear-gradient(to right, rgba(212, 175, 55, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(212, 175, 55, 0.05) 1px, transparent 1px);
+}
+
+/* Custom Scrollbar for Webkit */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--background)); 
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3); 
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5); 
 }
