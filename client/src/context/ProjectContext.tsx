@@ -1,20 +1,24 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Layout, Component, ComponentType } from '../lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { createProject, updateProject } from '../services/api';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '../hooks/useAuth';
+import axios from 'axios';
 
 interface ProjectContextType {
   layout: Layout;
   selectedComponentId: string | null;
-  currentProjectId: number | null;
+  currentProjectId: string | null;
+  currentProjectName: string;
   addComponent: (type: ComponentType) => void;
   selectComponent: (id: string | null) => void;
   updateComponentProps: (id: string, props: any) => void;
   removeComponent: (id: string) => void;
   saveProject: () => Promise<void>;
   setLayout: (layout: Layout) => void;
-  setCurrentProjectId: (id: number | null) => void;
+  setCurrentProjectId: (id: string | null) => void;
+  loadProject: (projectId: string) => Promise<void>;
+  deleteProject: (projectId: string) => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
@@ -74,8 +78,51 @@ const addChildToParent = (components: Component[], parentId: string, newComponen
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
   const [layout, setLayout] = useState<Layout>(INITIAL_LAYOUT);
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
-  const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [currentProjectName, setCurrentProjectName] = useState<string>('Untitled Project');
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Auto-save to MongoDB every 30 seconds if project exists and user is logged in
+  useEffect(() => {
+    if (!user) {
+      console.log('[ProjectContext] No user, skipping auto-save');
+      return;
+    }
+
+    if (!currentProjectId) {
+      console.log('[ProjectContext] No project ID, skipping auto-save');
+      return;
+    }
+
+    console.log('[ProjectContext] Setting up auto-save for project:', currentProjectId);
+
+    // Clear existing timeout
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+    }
+
+    // Set new timeout for auto-save
+    const timeout = setTimeout(async () => {
+      try {
+        console.log('[ProjectContext] Auto-saving project:', currentProjectId);
+        await axios.patch(`/api/projects/${currentProjectId}`, {
+          name: currentProjectName,
+          layout: layout,
+        });
+        console.log('[ProjectContext] Auto-save successful');
+      } catch (error) {
+        console.error('[ProjectContext] Auto-save failed:', error);
+      }
+    }, 30000); // Auto-save every 30 seconds
+
+    setAutoSaveTimeout(timeout);
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [layout, currentProjectId, currentProjectName, user]);
 
   const addComponent = (type: ComponentType) => {
     const newComponent: Component = {
@@ -138,27 +185,104 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   const saveProject = async () => {
     try {
-      const projectName = `Neural UI Project - ${new Date().toLocaleDateString()}`;
+      console.log('[ProjectContext] Save button clicked - User:', user?.id, 'Project ID:', currentProjectId);
+      
+      if (!user) {
+        console.log('[ProjectContext] No user authenticated');
+        toast({
+          title: "Not Authenticated",
+          description: "You must be logged in to save projects.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const projectName = currentProjectName || `Neural UI Project - ${new Date().toLocaleDateString()}`;
+      console.log('[ProjectContext] Saving project:', projectName);
       
       if (currentProjectId) {
-        await updateProject(currentProjectId, projectName, layout);
+        // Update existing project in MongoDB
+        console.log('[ProjectContext] Updating existing project:', currentProjectId);
+        await axios.patch(`/api/projects/${currentProjectId}`, {
+          name: projectName,
+          layout: layout,
+        });
+        console.log('[ProjectContext] Update successful');
         toast({
           title: "Project Updated",
           description: "Your project has been saved successfully.",
         });
       } else {
-        const newProject = await createProject(projectName, layout);
-        setCurrentProjectId(newProject.id);
+        // Create new project in MongoDB
+        console.log('[ProjectContext] Creating new project');
+        const response = await axios.post('/api/projects', {
+          name: projectName,
+          layout: layout,
+        });
+        const newProjectId = response.data.id;
+        console.log('[ProjectContext] New project created with ID:', newProjectId);
+        setCurrentProjectId(newProjectId);
+        setCurrentProjectName(projectName);
         toast({
           title: "Project Saved",
           description: "Your project has been created successfully.",
         });
       }
     } catch (error) {
-      console.error('Save error:', error);
+      console.error('[ProjectContext] Save error:', error);
       toast({
         title: "Save Failed",
         description: error instanceof Error ? error.message : "Failed to save project",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadProject = async (projectId: string) => {
+    try {
+      console.log('[ProjectContext] Loading project:', projectId);
+      const response = await axios.get(`/api/projects/${projectId}`);
+      const project = response.data;
+      
+      setCurrentProjectId(project.id);
+      setCurrentProjectName(project.name);
+      setLayout(project.layout || INITIAL_LAYOUT);
+      
+      toast({
+        title: "Project Loaded",
+        description: `Loaded project: ${project.name}`,
+      });
+    } catch (error) {
+      console.error('[ProjectContext] Load error:', error);
+      toast({
+        title: "Load Failed",
+        description: error instanceof Error ? error.message : "Failed to load project",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const deleteProject = async (projectId: string) => {
+    try {
+      console.log('[ProjectContext] Deleting project:', projectId);
+      await axios.delete(`/api/projects/${projectId}`);
+      
+      // If deleting current project, reset
+      if (projectId === currentProjectId) {
+        setCurrentProjectId(null);
+        setCurrentProjectName('Untitled Project');
+        setLayout(INITIAL_LAYOUT);
+      }
+      
+      toast({
+        title: "Project Deleted",
+        description: "Your project has been deleted.",
+      });
+    } catch (error) {
+      console.error('[ProjectContext] Delete error:', error);
+      toast({
+        title: "Delete Failed",
+        description: error instanceof Error ? error.message : "Failed to delete project",
         variant: "destructive",
       });
     }
@@ -170,6 +294,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         layout,
         selectedComponentId,
         currentProjectId,
+        currentProjectName,
         addComponent,
         selectComponent,
         updateComponentProps,
@@ -177,6 +302,8 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
         saveProject,
         setLayout,
         setCurrentProjectId,
+        loadProject,
+        deleteProject,
       }}
     >
       {children}

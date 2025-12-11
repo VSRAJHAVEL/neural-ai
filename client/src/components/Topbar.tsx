@@ -1,105 +1,79 @@
 import React, { useState } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { 
   Save, 
   Sparkles, 
   Play, 
   Code,
   Loader2,
-  Cpu,
-  Copy,
-  Check,
-  X,
-  FileCode
+  LogOut,
+  PanelLeftIcon
 } from 'lucide-react';
 import { GenerationResult } from '../services/api';
-import { generateCode, optimizeCode } from '../services/api';
-import { useToast } from '@/hooks/use-toast';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
+import { generateCode, optimizeLayout, optimizeCode } from '../services/api';
+import { toast as sonnerToast } from 'sonner';
 import { motion } from 'framer-motion';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useAuth } from '../hooks/useAuth';
+import { useLocation } from 'wouter';
 
-export function Topbar({ onPreview }: { onPreview: () => void }) {
-  const { saveProject, layout } = useProject();
-  const { toast } = useToast();
+export function Topbar({ onPreview, onToggleSidebar, onGenerated }: { onPreview: () => void; onToggleSidebar?: () => void; onGenerated?: (result: GenerationResult) => void }) {
+  const { saveProject, layout, setLayout } = useProject();
+  const { logout } = useAuth();
+  const [, setLocation] = useLocation();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [generatedResult, setGeneratedResult] = useState<GenerationResult | null>(null);
-  const [showResultDialog, setShowResultDialog] = useState(false);
-  const [activeFileIndex, setActiveFileIndex] = useState(0);
-  const [copied, setCopied] = useState(false);
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     try {
       const result = await generateCode(layout);
-      setGeneratedResult(result);
-      setActiveFileIndex(0);
-      setShowResultDialog(true);
-      toast({
-        title: "Code Generated",
+      sonnerToast.success("Code Generated", {
         description: "Your layout has been converted to React code using AI.",
       });
+      if (onGenerated) onGenerated(result);
     } catch (error) {
       console.error('Generation error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate code.",
-        variant: "destructive"
-      });
+      sonnerToast.error(error instanceof Error ? error.message : "Failed to generate code");
     } finally {
       setIsGenerating(false);
     }
   };
 
   const handleOptimize = async () => {
+    if (!layout || !layout.components || layout.components.length === 0) {
+      sonnerToast.info("No layout to optimize", {
+        description: "Add components to your layout first.",
+      });
+      return;
+    }
+
     setIsOptimizing(true);
     try {
-      if (!generatedResult || !generatedResult.files[0]) {
-        toast({
-          title: "No Code to Optimize",
-          description: "Please generate code first before optimizing.",
-          variant: "destructive"
-        });
-        setIsOptimizing(false);
-        return;
-      }
-
-      const currentCode = generatedResult.files[0].content;
-      const result = await optimizeCode(currentCode);
-      
-      setGeneratedResult({
-        files: [{ name: 'Optimized.jsx', content: result.optimizedCode, language: 'jsx' }],
-        readme: "AI-Optimized Code",
-        notes: result.notes 
-      });
-      setActiveFileIndex(0);
-      setShowResultDialog(true);
-      toast({
-        title: "Optimization Complete",
-        description: "AI has improved your code structure.",
+      const result = await optimizeLayout(layout);
+      setLayout(result.optimizedLayout);
+      sonnerToast.success("Layout Optimized", {
+        description: result.notes || "Your layout has been optimized by AI.",
       });
     } catch (error) {
-      console.error('Optimization error:', error);
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to optimize code.",
-        variant: "destructive"
-      });
+      console.error('Layout optimization error:', error);
+      sonnerToast.error(error instanceof Error ? error.message : "Failed to optimize layout");
     } finally {
       setIsOptimizing(false);
     }
   };
 
-  const copyToClipboard = () => {
-    if (generatedResult && generatedResult.files[activeFileIndex]) {
-      navigator.clipboard.writeText(generatedResult.files[activeFileIndex].content);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-      toast({ title: "Copied to clipboard", duration: 2000 });
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      setLocation('/login');
+      sonnerToast.success("Signed out", {
+        description: "You have been successfully signed out.",
+      });
+    } catch (error) {
+      sonnerToast.error("Sign out failed", {
+        description: error instanceof Error ? error.message : "Failed to sign out",
+      });
     }
   };
 
@@ -107,6 +81,17 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
     <>
       <header className="h-16 border-b border-primary/20 bg-black/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-50 shadow-lg shadow-black/50">
         <div className="flex items-center gap-3">
+          {onToggleSidebar && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white/60 hover:text-primary hover:bg-primary/10"
+              onClick={onToggleSidebar}
+            >
+              <PanelLeftIcon className="w-4 h-4" />
+              <span className="sr-only">Toggle sidebar</span>
+            </Button>
+          )}
           <motion.div 
             whileHover={{ rotate: 180 }}
             transition={{ duration: 0.5 }}
@@ -160,89 +145,23 @@ export function Topbar({ onPreview }: { onPreview: () => void }) {
             {isOptimizing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
             AI Optimize
           </Button>
+
+          <div className="h-6 w-px bg-white/10 mx-2" />
+
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleSignOut}
+            className="text-white/60 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            title="Sign out"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
         </div>
       </header>
 
-      <Dialog open={showResultDialog} onOpenChange={setShowResultDialog}>
-        <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 bg-zinc-950 border-primary/20 shadow-2xl shadow-primary/10 overflow-hidden [&>button]:hidden">
-          <DialogHeader className="px-6 py-4 border-b border-white/10 flex flex-row items-center justify-between">
-            <div className="space-y-1">
-               <DialogTitle className="text-primary flex items-center gap-2">
-                  <Cpu size={20} /> AI Generation Result
-               </DialogTitle>
-               <DialogDescription className="text-zinc-400">
-                  {generatedResult?.notes || "Code generation complete."}
-               </DialogDescription>
-            </div>
-            {/* Explicit Close Button using DialogClose for robust behavior */}
-            <DialogClose asChild>
-               <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white">
-                  <X size={20} />
-               </Button>
-            </DialogClose>
-          </DialogHeader>
-          
-          <div className="flex-1 flex overflow-hidden">
-             {/* File Explorer Sidebar */}
-             <div className="w-64 bg-zinc-900 border-r border-white/10 p-4 overflow-y-auto">
-                <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-4">Generated Files</h3>
-                <div className="space-y-2">
-                   {generatedResult?.files.map((file, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setActiveFileIndex(idx)}
-                        className={`w-full text-left px-3 py-2 rounded text-sm flex items-center gap-2 transition-colors ${
-                           activeFileIndex === idx ? 'bg-primary/20 text-primary' : 'text-zinc-400 hover:bg-white/5 hover:text-white'
-                        }`}
-                      >
-                         <FileCode size={14} />
-                         {file.name}
-                      </button>
-                   ))}
-                </div>
-             </div>
-
-             {/* Code Editor Area */}
-             <div className="flex-1 flex flex-col bg-[#1e1e1e] relative">
-                <div className="h-10 border-b border-white/5 flex items-center justify-between px-4 bg-[#252526]">
-                   <span className="text-xs text-zinc-400 font-mono">
-                      {generatedResult?.files[activeFileIndex]?.name}
-                   </span>
-                   <Button 
-                     variant="ghost" 
-                     size="sm" 
-                     onClick={copyToClipboard}
-                     className="h-7 text-xs text-zinc-300 hover:text-white hover:bg-white/10"
-                   >
-                      {copied ? <Check size={12} className="mr-1.5 text-green-400" /> : <Copy size={12} className="mr-1.5" />}
-                      {copied ? 'Copied' : 'Copy Code'}
-                   </Button>
-                </div>
-                <div className="flex-1 overflow-auto custom-scrollbar">
-                   {generatedResult && (
-                      <SyntaxHighlighter
-                         language={generatedResult.files[activeFileIndex].language === 'jsx' ? 'javascript' : 'css'}
-                         style={vscDarkPlus}
-                         customStyle={{ margin: 0, padding: '1.5rem', background: 'transparent', fontSize: '13px' }}
-                         showLineNumbers={true}
-                      >
-                         {generatedResult.files[activeFileIndex].content}
-                      </SyntaxHighlighter>
-                   )}
-                </div>
-             </div>
-          </div>
-          
-          <div className="p-4 border-t border-white/10 bg-black flex justify-end gap-2">
-             <Button variant="outline" onClick={() => setShowResultDialog(false)} className="border-white/10 text-zinc-300 hover:bg-white/5">
-                Close
-             </Button>
-             <Button onClick={copyToClipboard} className="bg-primary text-black hover:bg-primary/90">
-                <Copy size={14} className="mr-2" /> Copy All Files
-             </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* AI result dialog is rendered by the parent (BuilderPage) via `onGenerated` callback */}
     </>
   );
 }

@@ -106,7 +106,9 @@ export async function optimizeCodeWithAI(code: string): Promise<{ optimizedCode:
 
   const prompt = `You are an expert React developer. Optimize and improve this React code:
 
+\`\`\`
 ${code}
+\`\`\`
 
 Improvements to make:
 - Add accessibility attributes (aria-labels, roles)
@@ -116,11 +118,8 @@ Improvements to make:
 - Add comments for complex logic
 - Follow React best practices
 
-Return ONLY valid JSON in this format:
-{
-  "optimizedCode": "... the improved code ...",
-  "notes": "Brief bullet points of improvements made"
-}`;
+Return ONLY valid JSON (no markdown, no code blocks) in this exact format:
+{"optimizedCode": "...the complete improved code here with newlines escaped...", "notes": "Brief bullet points of improvements made"}`;
 
   try {
     const response = await fetch(GROQ_API_URL, {
@@ -153,9 +152,26 @@ Return ONLY valid JSON in this format:
     const data = await response.json();
     const content = data.choices[0]?.message?.content;
     
+    if (!content) {
+      throw new Error('No content in response');
+    }
+    
     let cleanedContent = content.trim();
+    
+    // Try to extract JSON from the response
+    // First try removing markdown code blocks
     if (cleanedContent.startsWith('```json')) {
-      cleanedContent = cleanedContent.replace(/```json\n?/, '').replace(/```\s*$/, '');
+      cleanedContent = cleanedContent.slice(7);
+      cleanedContent = cleanedContent.replace(/```\s*$/, '').trim();
+    } else if (cleanedContent.startsWith('```')) {
+      cleanedContent = cleanedContent.slice(3);
+      cleanedContent = cleanedContent.replace(/```\s*$/, '').trim();
+    }
+    
+    // Try to find JSON object if it's embedded in text
+    const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanedContent = jsonMatch[0];
     }
 
     const result = JSON.parse(cleanedContent);
@@ -163,5 +179,77 @@ Return ONLY valid JSON in this format:
   } catch (error) {
     console.error('AI optimization error:', error);
     throw new Error(`Failed to optimize code: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+export async function optimizeLayoutWithAI(layout: Layout): Promise<{ optimizedLayout: Layout; notes: string }> {
+  if (!GROQ_API_KEY) {
+    throw new Error('GROQ_API_KEY is not configured');
+  }
+
+  const prompt = `You are an expert UI/UX designer and React developer. Analyze and optimize this website layout for better user experience and design:
+
+Current Layout:
+${JSON.stringify(layout, null, 2)}
+
+Optimization suggestions:
+- Improve component hierarchy and organization
+- Better spacing and alignment
+- Suggest reordering components for better user flow
+- Group related components together
+- Add missing layout components (headers, footers, sections)
+- Ensure semantic HTML structure
+
+Return ONLY valid JSON with the optimized layout structure. Keep all component data but reorganize as needed:
+{
+  "optimizedLayout": {
+    "components": [...the reorganized components...]
+  },
+  "notes": "Bullet points explaining the improvements made"
+}`;
+
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a UI/UX optimization assistant. Return valid JSON only. Maintain all component data while optimizing structure.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 4000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Groq API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0]?.message?.content;
+    
+    let cleanedContent = content.trim();
+    if (cleanedContent.startsWith('```json')) {
+      cleanedContent = cleanedContent.replace(/```json\n?/, '').replace(/```\s*$/, '');
+    } else if (cleanedContent.startsWith('```')) {
+      cleanedContent = cleanedContent.replace(/```\n?/, '').replace(/```\s*$/, '');
+    }
+
+    const result = JSON.parse(cleanedContent);
+    return result;
+  } catch (error) {
+    console.error('AI layout optimization error:', error);
+    throw new Error(`Failed to optimize layout: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }

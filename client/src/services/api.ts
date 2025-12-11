@@ -106,3 +106,25 @@ export async function optimizeCode(code: string): Promise<{ optimizedCode: strin
   
   return response.json();
 }
+
+export async function optimizeLayout(layout: Layout): Promise<{ optimizedLayout: Layout; notes: string }> {
+  const response = await fetch(`${API_BASE}/ai/optimize-layout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ layout }),
+  });
+  
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to optimize layout');
+  }
+  
+  const text = await response.text();
+  if (!text) {
+    throw new Error('Empty response from server');
+  }
+  
+  return JSON.parse(text);
+}

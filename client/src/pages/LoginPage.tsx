@@ -1,27 +1,47 @@
 import React, { useState } from 'react';
 import { useLocation } from 'wouter';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowRight, Lock, Mail } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, ArrowRight, Lock, Mail, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [, setLocation] = useLocation();
+  const { signIn, signUp } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate Firebase Login
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await signIn(email, password);
       setLocation('/builder');
-    }, 1500);
+    } catch (error) {
+      // Error is handled by useAuth hook
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      await signUp(email, password);
+      setLocation('/builder');
+    } catch (error) {
+      // Error is handled by useAuth hook
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -67,55 +87,116 @@ export default function LoginPage() {
               The Gold Standard in AI Web Building
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4 pt-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-primary/90">Email</Label>
-                <div className="relative group">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-white/40 group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="designer@neural.ai"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder:text-white/20"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password" className="text-primary/90">Password</Label>
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-white/40 group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    id="password" 
-                    type="password"
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder:text-white/20"
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="pt-2 pb-8">
-              <Button 
-                type="submit" 
-                className="w-full bg-gradient-to-r from-primary to-yellow-500 hover:from-yellow-400 hover:to-primary text-black font-bold shadow-lg shadow-primary/20 h-11 transition-all hover:scale-[1.02] active:scale-[0.98] border-none" 
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                ) : (
-                  <>
-                    Enter Studio <ArrowRight className="w-5 h-5 ml-2" />
-                  </>
-                )}
-              </Button>
-            </CardFooter>
-          </form>
+          <CardContent className="pt-4">
+            <Tabs defaultValue="login" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 bg-white/5 mb-4">
+                <TabsTrigger value="login" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="data-[state=active]:bg-primary/20 data-[state=active]:text-primary">
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email" className="text-primary/90">Email</Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-white/40 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="login-email" 
+                        type="email" 
+                        placeholder="designer@neural.ai"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder:text-white/20"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password" className="text-primary/90">Password</Label>
+                    <div className="relative group">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-white/40 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="login-password" 
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder:text-white/20"
+                      />
+                    </div>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-primary to-yellow-500 hover:from-yellow-400 hover:to-primary text-black font-bold shadow-lg shadow-primary/20 h-11 transition-all hover:scale-[1.02] active:scale-[0.98] border-none" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    ) : (
+                      <>
+                        Enter Studio <ArrowRight className="w-5 h-5 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="signup">
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email" className="text-primary/90">Email</Label>
+                    <div className="relative group">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-white/40 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="signup-email" 
+                        type="email" 
+                        placeholder="designer@neural.ai"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder:text-white/20"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password" className="text-primary/90">Password</Label>
+                    <div className="relative group">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-white/40 group-focus-within:text-primary transition-colors" />
+                      <Input 
+                        id="signup-password" 
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all text-white placeholder:text-white/20"
+                      />
+                    </div>
+                    <p className="text-xs text-white/40">Password must be at least 6 characters</p>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-primary to-yellow-500 hover:from-yellow-400 hover:to-primary text-black font-bold shadow-lg shadow-primary/20 h-11 transition-all hover:scale-[1.02] active:scale-[0.98] border-none" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                    ) : (
+                      <>
+                        Create Account <UserPlus className="w-5 h-5 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
         </Card>
       </motion.div>
     </div>
