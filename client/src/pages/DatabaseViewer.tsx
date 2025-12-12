@@ -1,14 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { db } from '@/services/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { RefreshCw, Database, ExternalLink, Users, Folder, Play } from 'lucide-react';
+import { RefreshCw, Database, ExternalLink, Users, Folder } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import axios from 'axios';
-import { initializeFirestoreClient } from '@/services/firestore-init';
 
 interface ProjectData {
   id: string;
@@ -39,87 +36,39 @@ export default function DatabaseViewer() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch all users
-      const usersCollection = collection(db, 'users');
-      const usersSnapshot = await getDocs(usersCollection);
-      const usersData: UserData[] = [];
+      // Fetch projects from MongoDB via API
+      const response = await axios.get('/api/projects');
+      const projectsData = response.data || [];
       
-      usersSnapshot.forEach((doc) => {
-        usersData.push({ id: doc.id, ...doc.data() });
-      });
-
-      // Fetch all projects from each user
+      // Group projects by user if available
+      const usersMap = new Map<string, UserData>();
       const allProjects: ProjectData[] = [];
       
-      for (const user of usersData) {
-        if (user.projects) {
-          Object.entries(user.projects).forEach(([projectId, project]) => {
-            allProjects.push({
-              ...(project as ProjectData),
-              id: projectId,
-              userId: user.id,
-            });
+      projectsData.forEach((project: any) => {
+        allProjects.push({
+          id: project._id || project.id,
+          name: project.name,
+          layout: project.layout,
+          userId: project.userId,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+        });
+        
+        if (project.userId && !usersMap.has(project.userId)) {
+          usersMap.set(project.userId, {
+            id: project.userId,
+            projects: {},
           });
-        } else {
-          // Try to fetch projects subcollection
-          try {
-            const projectsRef = collection(db, `users/${user.id}/projects`);
-            const projectsSnapshot = await getDocs(projectsRef);
-            projectsSnapshot.forEach((doc) => {
-              allProjects.push({
-                id: doc.id,
-                userId: user.id,
-                ...doc.data()
-              });
-            });
-          } catch (err) {
-            // Subcollection might not exist, continue
-          }
         }
-      }
+      });
 
-      setUsers(usersData);
+      setUsers(Array.from(usersMap.values()));
       setProjects(allProjects);
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch data from Firestore');
-      console.error('Error fetching Firestore data:', err);
+      setError(err.message || 'Failed to fetch data from MongoDB');
+      console.error('Error fetching MongoDB data:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const initializeDatabase = async () => {
-    setInitializing(true);
-    setError(null);
-    try {
-      // Try server-side initialization first
-      try {
-        const response = await axios.post('/api/db/init');
-        toast({
-          title: "Database Initialized",
-          description: response.data.message || "Database has been initialized successfully!",
-        });
-      } catch (serverError: any) {
-        // If server-side fails, try client-side initialization
-        console.log('Server-side initialization failed, trying client-side...', serverError);
-        await initializeFirestoreClient();
-        toast({
-          title: "Database Initialized",
-          description: "Database has been initialized successfully using client SDK!",
-        });
-      }
-      // Refresh data after initialization
-      await fetchData();
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to initialize database';
-      setError(errorMessage);
-      toast({
-        title: "Initialization Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setInitializing(false);
     }
   };
 
@@ -129,13 +78,11 @@ export default function DatabaseViewer() {
 
   const formatDate = (timestamp: any) => {
     if (!timestamp) return 'N/A';
-    if (timestamp.toDate) {
-      return timestamp.toDate().toLocaleString();
+    try {
+      return new Date(timestamp).toLocaleString();
+    } catch {
+      return String(timestamp);
     }
-    if (timestamp.seconds) {
-      return new Date(timestamp.seconds * 1000).toLocaleString();
-    }
-    return new Date(timestamp).toLocaleString();
   };
 
   return (
@@ -146,10 +93,10 @@ export default function DatabaseViewer() {
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
               <Database className="h-8 w-8" />
-              Firebase Database Viewer
+              MongoDB Database Viewer
             </h1>
             <p className="text-muted-foreground mt-2">
-              View your Firestore database collections and documents
+              View your MongoDB collections and documents
             </p>
           </div>
           <div className="flex gap-2">
@@ -160,26 +107,11 @@ export default function DatabaseViewer() {
               Back to Builder
             </Button>
             <Button
-              onClick={initializeDatabase}
-              disabled={initializing}
-              className="bg-primary text-black hover:bg-primary/90"
-            >
-              <Play className={`h-4 w-4 mr-2 ${initializing ? 'animate-spin' : ''}`} />
-              {initializing ? 'Initializing...' : 'Initialize Database'}
-            </Button>
-            <Button
               onClick={fetchData}
               disabled={loading}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => window.open('https://console.firebase.google.com/project/hackathon-2e5ff/firestore', '_blank')}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open Firebase Console
             </Button>
           </div>
         </div>
